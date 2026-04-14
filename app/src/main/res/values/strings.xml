@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Creesh</string>
+    <string name="nav_home">Inicio</string>
+    <string name="nav_discover">Descubrir</string>
+    <string name="nav_communities">Comunidades</string>
+    <string name="nav_upload">Subir</string>
+    <string name="nav_favorites">Favoritos</string>
+    <string name="find_your_tribe">Encuentra tu tribu</string>
+    <string name="hidden_gems">Joyas ocultas</string>
+    <string name="discover_recipes">Descubrir recetas</string>
+    <string name="upload_recipe_title">Sube tu receta</string>
+    <string name="publish_btn">Publicar en CREESH</string>
+    <string name="settings_title">Ajustes</string>
+    <string name="log_out">Cerrar sesión</string>
+    <string name="no_favorites">No tienes favoritos aún</string>
+</resources>

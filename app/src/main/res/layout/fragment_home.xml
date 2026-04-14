@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <!-- Guideline: la imagen cubre el 55% superior de la pantalla -->
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.55"/>
+
+    <!-- Hero: imagen edge-to-edge sin bordes redondeados -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardHero"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:cardCornerRadius="0dp"
+        app:cardElevation="4dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/guideline">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <ImageView
+                android:id="@+id/ivHeroImage"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="@android:drawable/ic_menu_gallery"/>
+
+            <!-- Gradient overlay oscuro sobre la imagen -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/gradient_overlay"/>
+
+            <!-- Texto superpuesto en la parte inferior de la imagen -->
+            <LinearLayout
+                android:id="@+id/layoutHeroContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
+                    android:text="CREESH"
+                    android:textColor="@color/white"
+                    android:textSize="34sp"
+                    android:fontFamily="sans-serif-black"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+
+                <TextView
+                    android:text="Encuentra las mejores recetas en alguna comunidad"
+                    android:textColor="@color/white"
+                    android:textSize="15sp"
+                    android:alpha="0.85"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+
+                <TextView
+                    android:id="@+id/tvHeroRecipeName"
+                    android:textColor="@color/orange_light"
+                    android:textSize="13sp"
+                    android:layout_marginTop="4dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+
+            </LinearLayout>
+
+            <!-- Overlay de error — visible solo cuando falla la API -->
+            <LinearLayout
+                android:id="@+id/layoutHeroError"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="center"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="#CC000000"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tvHeroErrorMessage"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sin conexión a internet"
+                    android:textColor="@color/white"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:gravity="center"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Verifica tu red e intenta de nuevo"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="13sp"
+                    android:gravity="center"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="16dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRetry"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="Reintentar"
+                    android:textSize="14sp"
+                    app:backgroundTint="@color/primary_orange"
+                    app:cornerRadius="20dp"/>
+
+            </LinearLayout>
+        </FrameLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Sección de 4 botones en cuadrícula 2x2 -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="16dp"
+        app:layout_constraintTop_toTopOf="@id/guideline"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Fila 1: Descubrir | Comunidades -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginBottom="8dp"
+            android:orientation="horizontal"
+            android:weightSum="2">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDiscover"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:text="Descubrir"
+                android:textSize="14sp"
+                app:backgroundTint="@color/primary_orange"
+                app:cornerRadius="14dp"
+                app:icon="@android:drawable/ic_menu_search"
+                app:iconGravity="textStart"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCommunities"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:text="Comunidades"
+                android:textSize="14sp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                app:strokeColor="@color/primary_orange"
+                app:strokeWidth="2dp"
+                android:textColor="@color/primary_orange"
+                app:cornerRadius="14dp"
+                app:icon="@android:drawable/ic_menu_myplaces"
+                app:iconGravity="textStart"
+                app:iconTint="@color/primary_orange"/>
+
+        </LinearLayout>
+
+        <!-- Fila 2: Subir una receta | Favoritos -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:weightSum="2">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnUploadRecipe"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:text="Subir receta"
+                android:textSize="13sp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                app:strokeColor="@color/primary_orange"
+                app:strokeWidth="2dp"
+                android:textColor="@color/primary_orange"
+                app:cornerRadius="14dp"
+                app:icon="@android:drawable/ic_menu_add"
+                app:iconGravity="textStart"
+                app:iconTint="@color/primary_orange"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFavorites"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:text="Favoritos"
+                android:textSize="14sp"
+                app:backgroundTint="@color/primary_orange"
+                app:cornerRadius="14dp"
+                app:icon="@android:drawable/btn_star_big_off"
+                app:iconGravity="textStart"/>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

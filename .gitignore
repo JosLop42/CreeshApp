@@ -1,0 +1,19 @@
+# Build outputs
+build/
+app/build/
+
+# Android Studio files
+*.iml
+.gradle/
+.idea/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Keystore files
+*.jks
+*.keystore
+
+# macOS
+.DS_Store

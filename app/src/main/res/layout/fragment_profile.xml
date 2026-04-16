@@ -169,7 +169,7 @@
                 android:id="@+id/tvNoFollowing"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Aún no sigues a ningún cocinero"
+                android:text="Aún trabajando en esto..."
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp"
                 android:gravity="center"

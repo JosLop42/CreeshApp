@@ -54,12 +54,8 @@ class RecipeDetailFragment : Fragment() {
                 .placeholder(android.R.drawable.ic_menu_gallery)
                 .into(binding.ivRecipeHeader)
 
-            // Favorito
-            updateFavoriteButton(viewModel.isFavorite(meal.id))
-            binding.btnFavorite.setOnClickListener {
-                viewModel.toggleFavorite(meal)
-                updateFavoriteButton(viewModel.isFavorite(meal.id))
-            }
+            // Favorito (desactivado temporalmente)
+            binding.btnFavorite.isEnabled = false
 
             // Contenido (mientras traduce muestra el original)
             binding.tvRecipeTitle.text    = meal.name

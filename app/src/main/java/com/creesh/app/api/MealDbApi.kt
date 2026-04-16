@@ -5,6 +5,8 @@ import com.creesh.app.api.models.MealResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 
+//librería que convierte automáticamente llamadas HTTP en funciones de Kotlin
+//En vez de escribir código de red manualmente, defines una interfaz y Retrofit hace el resto.
 interface MealDbApi {
 
     // Receta aleatoria

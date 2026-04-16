@@ -23,7 +23,7 @@
             android:fontFamily="sans-serif-black"/>
     </LinearLayout>
 
-    <!-- Empty state -->
+    <!-- Placeholder -->
     <LinearLayout
         android:id="@+id/tvEmptyFavorites"
         android:layout_width="match_parent"
@@ -36,26 +36,16 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="❤️"
             android:textSize="56sp"/>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="No tienes favoritos aún"
+            android:text="Trabajando en esto"
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary"
             android:layout_marginTop="12dp"/>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Guarda tus recetas favoritas\ndesde la vista de receta"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:gravity="center"
-            android:layout_marginTop="8dp"/>
     </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView

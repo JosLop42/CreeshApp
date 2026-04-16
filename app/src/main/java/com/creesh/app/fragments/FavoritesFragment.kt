@@ -31,23 +31,9 @@ class FavoritesFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        favoritesAdapter = RecipeAdapter { meal ->
-            viewModel.setSelectedMeal(meal)
-            findNavController().navigate(R.id.action_favoritesFragment_to_recipeDetailFragment)
-        }
-
-        binding.rvFavorites.apply {
-            layoutManager = GridLayoutManager(context, 2)
-            adapter = favoritesAdapter
-        }
-
-        viewModel.favorites.observe(viewLifecycleOwner) { favorites ->
-            favoritesAdapter.submitList(favorites.toList())
-            binding.tvEmptyFavorites.visibility =
-                if (favorites.isEmpty()) View.VISIBLE else View.GONE
-            binding.rvFavorites.visibility =
-                if (favorites.isEmpty()) View.GONE else View.VISIBLE
-        }
+        // TODO: funcionalidad de favoritos pendiente
+        binding.tvEmptyFavorites.visibility = View.VISIBLE
+        binding.rvFavorites.visibility = View.GONE
     }
 
     override fun onDestroyView() {

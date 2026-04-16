@@ -1,9 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    //Prohíbe HTTP plano en toda la app, osea solo HTTPS
     <base-config cleartextTrafficPermitted="false"/>
+
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">themealdb.com</domain>
         <domain includeSubdomains="true">randomuser.me</domain>
         <domain includeSubdomains="true">mymemory.translated.net</domain>
+        // Declara los 3 servidores con lo sque habla la app
+        // En AndroidManifest.xml hay esta línea que lo conecta:
+        // android:networkSecurityConfig="@xml/network_security_config
+
+        // resumen, es para tener control explícito sobre la seguridad de red.
+        // No obligatorio, pero es buena práctica ;)
     </domain-config>
 </network-security-config>
+

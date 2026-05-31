@@ -71,15 +71,34 @@
                             android:textStyle="bold"/>
                     </FrameLayout>
 
-                    <TextView
-                        android:id="@+id/tvUserName"
+                    <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:text="Juan García"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"/>
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="12dp">
+
+                        <TextView
+                            android:id="@+id/tvUserName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Juan García"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"/>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnEditName"
+                            style="@style/Widget.MaterialComponents.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:text="Editar"
+                            android:textSize="12sp"
+                            android:textColor="@color/primary_orange"
+                            android:minWidth="0dp"
+                            android:paddingHorizontal="8dp"/>
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/tvUserEmail"
@@ -90,13 +109,13 @@
                         android:textSize="14sp"
                         android:textColor="@color/text_secondary"/>
 
-                    <!-- Stats: Siguiendo / Favoritos -->
+                    <!-- Stats: Siguiendo / Favoritos / Recetas -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
                         android:orientation="horizontal"
-                        android:weightSum="2"
+                        android:weightSum="3"
                         android:gravity="center">
 
                         <LinearLayout
@@ -151,6 +170,35 @@
                                 android:textSize="12sp"
                                 android:textColor="@color/text_secondary"/>
                         </LinearLayout>
+
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="40dp"
+                            android:background="@color/divider"/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center">
+
+                            <TextView
+                                android:id="@+id/tvRecipesCount"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0"
+                                android:textSize="22sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_primary"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Recetas"
+                                android:textSize="12sp"
+                                android:textColor="@color/text_secondary"/>
+                        </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -169,7 +217,7 @@
                 android:id="@+id/tvNoFollowing"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Aún trabajando en esto..."
+                android:text="Aún no sigues a ningún cocinero"
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp"
                 android:gravity="center"
@@ -178,6 +226,35 @@
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvFollowingChefs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:nestedScrollingEnabled="false"
+                android:visibility="gone"/>
+
+            <!-- Mis Recetas -->
+            <TextView
+                android:text="Mis Recetas"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:id="@+id/tvNoRecipes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Aún no has publicado recetas"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:paddingVertical="16dp"
+                android:visibility="visible"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvMyRecipes"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"

@@ -30,6 +30,13 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right"/>
+        <action
+            android:id="@+id/action_profileFragment_to_myRecipeDetailFragment"
+            app:destination="@id/myRecipeDetailFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right"/>
     </fragment>
 
     <!-- ── Screens accesibles desde Home ──────────────────────────────────── -->
@@ -106,5 +113,26 @@
         android:id="@+id/settingsFragment"
         android:name="com.creesh.app.fragments.SettingsFragment"
         android:label="Ajustes"/>
+
+    <!-- ── Auth (sin bottom nav) ──────────────────────────────────────────── -->
+
+    <fragment
+        android:id="@+id/myRecipeDetailFragment"
+        android:name="com.creesh.app.fragments.MyRecipeDetailFragment"
+        android:label="Detalle de receta"/>
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.creesh.app.fragments.LoginFragment"
+        android:label="Iniciar sesión">
+        <action
+            android:id="@+id/action_loginFragment_to_registerFragment"
+            app:destination="@id/registerFragment"/>
+    </fragment>
+
+    <fragment
+        android:id="@+id/registerFragment"
+        android:name="com.creesh.app.fragments.RegisterFragment"
+        android:label="Registrarse"/>
 
 </navigation>

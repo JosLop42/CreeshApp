@@ -54,8 +54,11 @@ class RecipeDetailFragment : Fragment() {
                 .placeholder(android.R.drawable.ic_menu_gallery)
                 .into(binding.ivRecipeHeader)
 
-            // Favorito (desactivado temporalmente)
-            binding.btnFavorite.isEnabled = false
+            // Botón de favorito
+            updateFavoriteButton(viewModel.isFavorite(meal.id))
+            binding.btnFavorite.setOnClickListener {
+                viewModel.toggleFavorite(meal)
+            }
 
             // Contenido (mientras traduce muestra el original)
             binding.tvRecipeTitle.text    = meal.name
@@ -90,6 +93,11 @@ class RecipeDetailFragment : Fragment() {
 
             // Iniciar traducción
             viewModel.translateMeal(meal)
+        }
+
+        viewModel.favorites.observe(viewLifecycleOwner) {
+            val meal = viewModel.selectedMeal.value ?: return@observe
+            updateFavoriteButton(viewModel.isFavorite(meal.id))
         }
 
         viewModel.translatedContent.observe(viewLifecycleOwner) { content ->

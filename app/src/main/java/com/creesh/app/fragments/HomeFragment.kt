@@ -4,6 +4,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
@@ -58,6 +60,19 @@ class HomeFragment : Fragment() {
         binding.btnRetry.setOnClickListener {
             showHeroLoading()
             viewModel.loadHiddenGems()
+        }
+
+        binding.etHomeSearch.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                val query = binding.etHomeSearch.text.toString().trim()
+                if (query.isNotBlank()) {
+                    findNavController().navigate(
+                        R.id.discoverFragment,
+                        bundleOf("search_query" to query)
+                    )
+                }
+                true
+            } else false
         }
 
         binding.btnDiscover.setOnClickListener {

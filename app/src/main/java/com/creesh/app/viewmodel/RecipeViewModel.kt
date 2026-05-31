@@ -5,12 +5,31 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.creesh.app.api.RetrofitClient
+import com.creesh.app.api.SupabaseApi
+import com.creesh.app.api.SupabaseClient
+import com.creesh.app.api.SupabaseStorageClient
 import com.creesh.app.api.TranslationClient
 import com.creesh.app.api.models.CategoryItem
+import com.creesh.app.api.models.FavoriteItem
+import com.creesh.app.api.models.CommentItem
+import com.creesh.app.api.models.CommentRequest
+import com.creesh.app.api.models.CommunityItem
+import com.creesh.app.api.models.IngredientItem
+import com.creesh.app.api.models.IngredientRequest
 import com.creesh.app.api.models.Meal
+import com.creesh.app.api.models.RecipeDetail
+import com.creesh.app.api.models.RecipeRequest
+import com.creesh.app.api.models.UserRecipe
 import kotlinx.coroutines.launch
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+
+sealed class PublishState {
+    object Idle : PublishState()
+    object Loading : PublishState()
+    data class Success(val title: String) : PublishState()
+    data class Error(val message: String) : PublishState()
+}
 
 data class TranslatedContent(
     val name: String,
@@ -22,6 +41,9 @@ class RecipeViewModel : ViewModel() {
 
     private val api = RetrofitClient.api
     private val translationApi = TranslationClient.api
+    private val supabaseApi = SupabaseClient.retrofit.create(SupabaseApi::class.java)
+
+    private val userId get() = com.creesh.app.utils.SessionManager.getUserId() ?: "demo_user"
 
     private val _translatedContent = MutableLiveData<TranslatedContent?>()
     val translatedContent: LiveData<TranslatedContent?> = _translatedContent
@@ -47,11 +69,35 @@ class RecipeViewModel : ViewModel() {
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
 
-    private val _favorites = MutableLiveData<MutableList<Meal>>(mutableListOf())
-    val favorites: LiveData<MutableList<Meal>> = _favorites
+    private val _favorites = MutableLiveData<List<FavoriteItem>>(emptyList())
+    val favorites: LiveData<List<FavoriteItem>> = _favorites
 
     private val _activeCommunity = MutableLiveData<String?>(null)
     val activeCommunity: LiveData<String?> = _activeCommunity
+
+    private val _publishState = MutableLiveData<PublishState>(PublishState.Idle)
+    val publishState: LiveData<PublishState> = _publishState
+
+    private val _myRecipes = MutableLiveData<List<UserRecipe>>(emptyList())
+    val myRecipes: LiveData<List<UserRecipe>> = _myRecipes
+
+    private val _communities = MutableLiveData<List<CommunityItem>>(emptyList())
+    val communities: LiveData<List<CommunityItem>> = _communities
+
+    private val _selectedUserRecipe = MutableLiveData<UserRecipe?>()
+    val selectedUserRecipe: LiveData<UserRecipe?> = _selectedUserRecipe
+
+    private val _recipeDetail = MutableLiveData<RecipeDetail?>()
+    val recipeDetail: LiveData<RecipeDetail?> = _recipeDetail
+
+    private val _recipeIngredients = MutableLiveData<List<IngredientItem>>(emptyList())
+    val recipeIngredients: LiveData<List<IngredientItem>> = _recipeIngredients
+
+    private val _recipeComments = MutableLiveData<List<CommentItem>>(emptyList())
+    val recipeComments: LiveData<List<CommentItem>> = _recipeComments
+
+    private val _recipeLikes = MutableLiveData<Int>(0)
+    val recipeLikes: LiveData<Int> = _recipeLikes
 
     fun loadDiscoverRecipes() {
         viewModelScope.launch {
@@ -172,18 +218,163 @@ class RecipeViewModel : ViewModel() {
         _selectedMeal.value = meal
     }
 
-    fun toggleFavorite(meal: Meal) {
-        val list = _favorites.value ?: mutableListOf()
-        if (list.any { it.id == meal.id }) {
-            list.removeAll { it.id == meal.id }
-        } else {
-            list.add(meal)
+    fun loadFavorites() {
+        viewModelScope.launch {
+            try {
+                _favorites.value = supabaseApi.getFavorites("eq.$userId")
+            } catch (e: Exception) {
+                // si falla, mantener lista actual
+            }
         }
-        _favorites.value = list
+    }
+
+    fun toggleFavorite(meal: Meal) {
+        viewModelScope.launch {
+            try {
+                if (isFavorite(meal.id)) {
+                    supabaseApi.removeFavorite("eq.$userId", "eq.${meal.id}")
+                } else {
+                    supabaseApi.addFavorite(
+                        FavoriteItem(
+                            userId       = userId,
+                            mealId       = meal.id,
+                            mealTitle    = meal.name,
+                            mealImage    = meal.thumbnail,
+                            mealCategory = meal.category
+                        )
+                    )
+                }
+                loadFavorites()
+            } catch (e: Exception) {
+                // silencioso
+            }
+        }
+    }
+
+    fun loadMyRecipes() {
+        val authorId = com.creesh.app.utils.SessionManager.getUserId() ?: return
+        viewModelScope.launch {
+            try {
+                _myRecipes.value = supabaseApi.getMyRecipes("eq.$authorId", "created_at.desc")
+            } catch (e: Exception) { /* silencioso */ }
+        }
+    }
+
+    fun loadCommunities() {
+        viewModelScope.launch {
+            try {
+                _communities.value = supabaseApi.getCommunities()
+            } catch (e: Exception) { /* silencioso */ }
+        }
+    }
+
+    fun publishRecipe(
+        title: String,
+        description: String,
+        ingredientLines: List<String>,
+        instructions: String,
+        communityId: Int? = null,
+        imageBytes: ByteArray? = null,
+        mimeType: String? = null
+    ) {
+        val authorId = com.creesh.app.utils.SessionManager.getUserId() ?: run {
+            _publishState.value = PublishState.Error("No hay sesión activa")
+            return
+        }
+        _publishState.value = PublishState.Loading
+        viewModelScope.launch {
+            try {
+                var imageUrl: String? = null
+                var uploadError: String? = null
+                if (imageBytes != null && mimeType != null) {
+                    val ext = when {
+                        mimeType.contains("png")  -> "png"
+                        mimeType.contains("webp") -> "webp"
+                        else                      -> "jpg"
+                    }
+                    val filePath = "$authorId/${System.currentTimeMillis()}.$ext"
+                    val result = SupabaseStorageClient.uploadImage(filePath, imageBytes, mimeType)
+                    imageUrl    = result.url
+                    uploadError = result.error
+                }
+
+                val result = supabaseApi.addRecipe(
+                    RecipeRequest(
+                        authorId     = authorId,
+                        title        = title,
+                        description  = description.ifBlank { null },
+                        instructions = instructions.ifBlank { null },
+                        communityId  = communityId,
+                        imageUrl     = imageUrl
+                    )
+                )
+                val recipeId = result.firstOrNull()?.id ?: run {
+                    _publishState.value = PublishState.Error("Error al obtener ID de receta")
+                    return@launch
+                }
+                if (ingredientLines.isNotEmpty()) {
+                    supabaseApi.addIngredients(
+                        ingredientLines.mapIndexed { i, name ->
+                            IngredientRequest(recipeId, name, i)
+                        }
+                    )
+                }
+                val successMsg = if (uploadError != null)
+                    "$title ⚠️ Foto falló: $uploadError"
+                else title
+                _publishState.value = PublishState.Success(successMsg)
+                loadMyRecipes()
+            } catch (e: UnknownHostException) {
+                _publishState.value = PublishState.Error("Sin conexión a internet")
+            } catch (e: Exception) {
+                _publishState.value = PublishState.Error("Error al publicar: ${e.message}")
+            }
+        }
+    }
+
+    fun resetPublishState() { _publishState.value = PublishState.Idle }
+
+    fun updateDisplayName(name: String) {
+        val userId = com.creesh.app.utils.SessionManager.getUserId() ?: return
+        viewModelScope.launch {
+            try {
+                supabaseApi.updateProfile("eq.$userId", mapOf("full_name" to name))
+            } catch (e: Exception) { /* si falla en red, el nombre igual queda guardado localmente */ }
+            com.creesh.app.utils.SessionManager.saveDisplayName(name)
+        }
+    }
+
+    fun setSelectedUserRecipe(recipe: UserRecipe) { _selectedUserRecipe.value = recipe }
+
+    fun loadRecipeDetail(recipeId: String) {
+        viewModelScope.launch {
+            try {
+                _recipeDetail.value = supabaseApi.getRecipeById("eq.$recipeId").firstOrNull()
+                _recipeIngredients.value = supabaseApi.getIngredients("eq.$recipeId")
+                _recipeComments.value    = supabaseApi.getComments("eq.$recipeId")
+                _recipeLikes.value       = supabaseApi.getLikesByMealId("eq.$recipeId").size
+            } catch (e: Exception) { /* silencioso */ }
+        }
+    }
+
+    private val _commentError = MutableLiveData<String?>()
+    val commentError: LiveData<String?> = _commentError
+
+    fun addComment(recipeId: String, content: String) {
+        val userId = com.creesh.app.utils.SessionManager.getUserId() ?: return
+        viewModelScope.launch {
+            try {
+                supabaseApi.addComment(CommentRequest(recipeId, userId, content))
+                _recipeComments.value = supabaseApi.getComments("eq.$recipeId")
+                _commentError.value = null
+            } catch (e: Exception) {
+                _commentError.value = "No se pudo publicar el comentario: ${e.message}"
+            }
+        }
     }
 
     fun isFavorite(mealId: String): Boolean {
-        return _favorites.value?.any { it.id == mealId } == true
+        return _favorites.value?.any { it.mealId == mealId } == true
     }
 
     fun translateMeal(meal: Meal) {

@@ -28,8 +28,7 @@ class CommunitiesFragment : Fragment() {
         Community("Mariscos", "5.3k miembros", "🦞"),
         Community("Postres & Dulces", "9.7k miembros", "🍰"),
         Community("Pasta & Italiana", "11.2k miembros", "🍝"),
-        Community("Cocina Asiática", "13.8k miembros", "🍜"),
-        Community("Variado", "3.1k miembros", "🍽️")
+        Community("Cocina Asiática", "13.8k miembros", "🍜")
     )
 
     override fun onCreateView(

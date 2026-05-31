@@ -45,7 +45,19 @@ class DiscoverFragment : Fragment() {
             viewModel.loadDiscoverRecipes()
         }
 
+        // Búsqueda desde Home
+        arguments?.getString("search_query")?.takeIf { it.isNotBlank() }?.let { query ->
+            binding.searchView.setQuery(query, true)
+        }
+
+        binding.btnRetry.setOnClickListener {
+            hideEmptyStates()
+            viewModel.loadDiscoverRecipes()
+            viewModel.loadHiddenGems()
+        }
+
         binding.swipeRefresh.setOnRefreshListener {
+            hideEmptyStates()
             viewModel.clearCommunityFilter()
             viewModel.loadDiscoverRecipes()
             viewModel.loadHiddenGems()
@@ -78,15 +90,29 @@ class DiscoverFragment : Fragment() {
         }
 
         viewModel.randomMeals.observe(viewLifecycleOwner) { meals ->
-            discoverAdapter.submitList(meals)
+            if (viewModel.activeCommunity.value == null) {
+                discoverAdapter.submitList(meals)
+            }
             binding.swipeRefresh.isRefreshing = false
         }
 
         viewModel.searchResults.observe(viewLifecycleOwner) { meals ->
-            if (meals.isNotEmpty()) {
-                discoverAdapter.submitList(meals)
-            }
             binding.swipeRefresh.isRefreshing = false
+            val inCommunity = viewModel.activeCommunity.value != null
+            val query = binding.searchView.query
+            when {
+                inCommunity -> {
+                    discoverAdapter.submitList(meals)
+                    binding.layoutNoResults.visibility   = View.GONE
+                    binding.rvDiscoverRecipes.visibility = View.VISIBLE
+                }
+                !query.isNullOrBlank() -> {
+                    discoverAdapter.submitList(meals)
+                    binding.layoutNoResults.visibility   = if (meals.isEmpty()) View.VISIBLE else View.GONE
+                    binding.rvDiscoverRecipes.visibility = if (meals.isEmpty()) View.GONE else View.VISIBLE
+                }
+                meals.isNotEmpty() -> discoverAdapter.submitList(meals)
+            }
         }
 
         viewModel.isLoading.observe(viewLifecycleOwner) { loading ->
@@ -94,18 +120,20 @@ class DiscoverFragment : Fragment() {
         }
 
         viewModel.error.observe(viewLifecycleOwner) { error ->
-            error?.let {
-                android.widget.Toast.makeText(requireContext(), it, android.widget.Toast.LENGTH_LONG).show()
+            if (!error.isNullOrEmpty() && viewModel.randomMeals.value.isNullOrEmpty()) {
+                binding.layoutNoConnection.visibility = View.VISIBLE
             }
         }
 
         viewModel.activeCommunity.observe(viewLifecycleOwner) { community ->
             if (community != null) {
-                binding.tvSectionDiscover.text = "Recetas de: $community"
-                binding.rvHiddenGems.visibility = View.GONE
+                binding.tvSectionDiscover.text        = "Recetas de: $community"
+                binding.layoutHiddenGems.visibility   = View.GONE
+                binding.rvHiddenGems.visibility       = View.GONE
             } else {
-                binding.tvSectionDiscover.text = "Discover Recipes"
-                binding.rvHiddenGems.visibility = View.VISIBLE
+                binding.tvSectionDiscover.text        = "Descubrir recetas"
+                binding.layoutHiddenGems.visibility   = View.VISIBLE
+                binding.rvHiddenGems.visibility       = View.VISIBLE
             }
         }
     }
@@ -128,6 +156,12 @@ class DiscoverFragment : Fragment() {
                 return false
             }
         })
+    }
+
+    private fun hideEmptyStates() {
+        binding.layoutNoResults.visibility    = View.GONE
+        binding.layoutNoConnection.visibility = View.GONE
+        binding.rvDiscoverRecipes.visibility  = View.VISIBLE
     }
 
     override fun onDestroyView() {

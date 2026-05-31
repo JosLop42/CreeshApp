@@ -9,6 +9,7 @@ import com.creesh.app.api.models.Chef
 import com.creesh.app.api.models.Meal
 import com.creesh.app.api.models.fallbackChefs
 import com.creesh.app.api.models.toChef
+import com.creesh.app.utils.SessionManager
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -27,9 +28,11 @@ class SocialViewModel : ViewModel() {
     val isLoadingChefs: LiveData<Boolean> = _isLoadingChefs
 
     init {
-        // Mostrar chefs locales de inmediato para que la UI no quede vacía
         _chefs.value = fallbackChefs()
-        // Luego intentar reemplazar con datos reales en background
+        val userId = SessionManager.getUserId()
+        if (userId != null) {
+            _followedChefIds.value = SessionManager.getFollowedChefs(userId)
+        }
         loadChefsFromApi()
     }
 
@@ -72,6 +75,7 @@ class SocialViewModel : ViewModel() {
         val set = _followedChefIds.value ?: mutableSetOf()
         if (set.contains(chefId)) set.remove(chefId) else set.add(chefId)
         _followedChefIds.value = set
+        SessionManager.getUserId()?.let { SessionManager.saveFollowedChefs(it, set) }
     }
 
     fun isFollowing(chefId: String): Boolean =

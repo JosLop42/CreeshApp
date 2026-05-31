@@ -1,191 +1,403 @@
 # Presentación 2 — Frontend (Estructura Android)
 
-> **Sección a cargo de:** Arquitectura de la app Android, patrón MVVM, navegación, adaptadores y decisiones de interfaz.
+> **Sección a cargo de:** Arquitectura de la app Android, patrón MVVM, ciclo de vida, navegación, LiveData y cómo todo se conecta.
 
 ---
 
-## 1. Patrón MVVM
+## 1. El patrón MVVM — Por qué existe
 
-La app usa el patrón **Model-View-ViewModel**, el estándar recomendado por Google para Android.
+Antes de MVVM, Android tenía un problema grave: toda la lógica vivía dentro del `Activity` o `Fragment`. Si el usuario rotaba el teléfono, Android destruía y recreaba la pantalla — y todos los datos que estaban en memoria se perdían. La app tenía que volver a llamar a la API desde cero.
 
-| Capa | Responsabilidad | En la app |
+MVVM resuelve esto separando el código en 3 capas con responsabilidades claras:
+
+| Capa | Responsabilidad | Ejemplo en CreeshApp |
 |---|---|---|
-| **View** | Mostrar datos, capturar eventos del usuario | Fragments + XML layouts |
-| **ViewModel** | Lógica de negocio, mantener estado | RecipeViewModel, AuthViewModel, SocialViewModel |
-| **Model** | Datos y fuentes externas | APIs, Supabase, data classes |
+| **View** | Mostrar datos y capturar eventos | `DiscoverFragment`, `RecipeDetailFragment` |
+| **ViewModel** | Lógica de negocio, mantener estado | `RecipeViewModel`, `AuthViewModel`, `SocialViewModel` |
+| **Model** | Fuentes de datos | APIs (Retrofit), Supabase, data classes |
 
-**Ventaja principal:** Si el usuario rota el teléfono, el ViewModel sobrevive — los datos no se pierden.
+**La clave:** el `ViewModel` sobrevive a la rotación de pantalla. La `View` se destruye y se recrea, pero cuando vuelve a crear sus observers, el `ViewModel` ya tiene los datos listos.
 
-```mermaid
-graph LR
-    V[Fragment\nVista] -- "observa LiveData" --> VM[ViewModel]
-    VM -- "llama" --> M[API / Base de datos]
-    M -- "devuelve datos" --> VM
-    VM -- "actualiza LiveData" --> V
+```
+Teléfono rota:
+  View (Fragment) → se destruye y se recrea
+  ViewModel       → NO se destruye, mantiene sus LiveData intactos
+  
+  Nuevo Fragment → observa el mismo LiveData → datos ya están ahí
 ```
 
 ---
 
-## 2. Estructura de paquetes
+## 2. Los 3 ViewModels de la app
 
-```
-com.creesh.app/
-├── adapters/       → Conectan datos con listas (RecyclerView)
-├── api/            → Clientes HTTP para cada servicio externo
-│   └── models/     → Data classes (objetos de datos)
-├── fragments/      → Cada pantalla de la app
-├── viewmodel/      → Lógica de negocio
-└── utils/          → Herramientas transversales (SessionManager)
-```
+CreeshApp tiene exactamente 3 ViewModels, uno por área de responsabilidad:
 
----
+### RecipeViewModel
+El más grande. Maneja todo lo relacionado con recetas:
+- Cargar recetas aleatorias (`loadDiscoverRecipes()`)
+- Cargar Hidden Gems (`loadHiddenGems()`)
+- Buscar recetas (`searchMeals()`)
+- Favoritos (cargar, agregar, quitar)
+- Traducción automática (`translateMeal()`)
+- Publicar recetas propias (`publishRecipe()`)
+- Mis recetas (`loadMyRecipes()`)
 
-## 3. Fragments — Las pantallas
+### AuthViewModel
+Solo maneja autenticación:
+- `login(email, password)` — llama a Supabase Auth
+- `register(email, password, confirmPassword)` — crea cuenta nueva
+- Expone `authState: LiveData<AuthState>`
 
-Cada pantalla es un `Fragment`. Todos comparten el mismo `Activity` (`MainActivity`).
-
-| Fragment | Función |
-|---|---|
-| `LoginFragment` | Inicio de sesión |
-| `RegisterFragment` | Registro de cuenta |
-| `HomeFragment` | Pantalla principal con accesos rápidos |
-| `DiscoverFragment` | Búsqueda y exploración de recetas |
-| `FavoritesFragment` | Recetas guardadas del usuario |
-| `ProfileFragment` | Perfil: nombre, stats, mis recetas, siguiendo |
-| `UploadRecipeFragment` | Formulario para publicar una receta |
-| `RecipeDetailFragment` | Detalle de receta de TheMealDB |
-| `MyRecipeDetailFragment` | Detalle de receta propia con comentarios |
-| `ChefProfileFragment` | Perfil de un cocinero |
-| `CommunitiesFragment` | Lista de comunidades temáticas |
+### SocialViewModel
+Maneja lo social:
+- Cargar cocineros (`loadChefs()` desde RandomUser API)
+- Seguir/dejar de seguir cocineros
+- Asignar cocinero a una receta (`getChefForMeal()`)
 
 ---
 
-## 4. Navegación con NavComponent
+## 3. Cómo funciona LiveData — El corazón de MVVM
 
-La navegación entre pantallas usa **Android Navigation Component**. Hay un único archivo `nav_graph.xml` que define todas las rutas.
+`LiveData` es un contenedor de datos que notifica automáticamente a quienes lo observan cuando cambia su valor.
 
-```mermaid
-graph TD
-    LOGIN --> HOME
-    LOGIN --> REGISTER
-    REGISTER --> HOME
-    HOME --> DISCOVER
-    HOME --> COMMUNITIES
-    HOME --> UPLOAD["Upload Recipe"]
-    HOME --> FAVORITES
-    DISCOVER --> DETAIL["Recipe Detail"]
-    FAVORITES --> DETAIL
-    COMMUNITIES --> DISCOVER
-    DETAIL --> CHEF["Chef Profile"]
-    HOME --> PROFILE
-    PROFILE --> MYDETAIL["My Recipe Detail"]
-    PROFILE --> CHEF
-```
-
-**Cómo funciona:**
-```kotlin
-// Navegar a una pantalla
-findNavController().navigate(R.id.action_homeFragment_to_recipeDetailFragment)
-
-// Volver atrás
-findNavController().navigateUp()
-```
-
-El `BottomNavigationView` también usa el NavComponent. Cuando el destino no está en el menú (Discover, Communities), el ítem "Inicio" queda seleccionado automáticamente.
-
----
-
-## 5. ViewBinding
-
-En lugar de `findViewById()`, la app usa **ViewBinding**. Genera una clase para cada layout XML, dando acceso directo a las vistas con seguridad de tipos.
+Así se define en `RecipeViewModel`:
 
 ```kotlin
-// Sin ViewBinding (propenso a errores)
-val button = findViewById<Button>(R.id.btnLogin)
+// MutableLiveData: se puede cambiar desde dentro del ViewModel
+private val _randomMeals = MutableLiveData<List<Meal>>()
 
-// Con ViewBinding (seguro, limpio)
-private val binding get() = _binding!!
-binding.btnLogin.setOnClickListener { ... }
+// LiveData: solo lectura para el Fragment (no puede modificar, solo observar)
+val randomMeals: LiveData<List<Meal>> = _randomMeals
+```
+
+Y así se observa en `DiscoverFragment`:
+
+```kotlin
+viewModel.randomMeals.observe(viewLifecycleOwner) { meals ->
+    // Este bloque se ejecuta CADA VEZ que randomMeals cambia
+    discoverAdapter.submitList(meals)
+    binding.swipeRefresh.isRefreshing = false
+}
+```
+
+**Por qué `viewLifecycleOwner` y no `this`?**
+Un Fragment puede existir sin su vista (entre `onDestroyView` y `onCreateView`). Si usamos `this`, el observer seguiría activo y podría intentar actualizar una vista que ya no existe — crash. `viewLifecycleOwner` une el observer al ciclo de vida de la vista, no del Fragment.
+
+---
+
+## 4. El ciclo de vida de un Fragment
+
+Cada Fragment pasa por un ciclo de vida estricto. Entender esto es clave para entender el código:
+
+```
+onCreateView()     → infla el XML, crea la vista, devuelve binding.root
+       ↓
+onViewCreated()    → la vista ya existe, aquí se conectan observers, adapters, listeners
+       ↓
+[El Fragment está visible y activo]
+       ↓
+onDestroyView()    → la vista se destruye, AQUÍ se hace _binding = null
+```
+
+Ejemplo real en `DiscoverFragment`:
+
+```kotlin
+override fun onCreateView(
+    inflater: LayoutInflater, container: ViewGroup?,
+    savedInstanceState: Bundle?
+): View {
+    // Inflamos el XML → creamos los objetos View en memoria
+    _binding = FragmentDiscoverBinding.inflate(inflater, container, false)
+    return binding.root   // devolvemos la vista raíz
+}
+
+override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    super.onViewCreated(view, savedInstanceState)
+    // Aquí ya tenemos la vista. Conectamos todo.
+    setupAdapters()
+    setupObservers()
+    setupSearch()
+    viewModel.loadHiddenGems()
+    viewModel.loadDiscoverRecipes()
+}
+
+override fun onDestroyView() {
+    super.onDestroyView()
+    _binding = null   // Evitamos memory leak: soltamos la referencia a la vista
+}
+```
+
+**¿Por qué `_binding = null` en `onDestroyView`?**
+El Fragment puede seguir vivo en memoria después de que su vista se destruye (por ejemplo, al navegar a otra pantalla). Si no limpiamos la referencia al binding, el Fragment retiene toda la vista en memoria — lo que se llama un **memory leak**.
+
+---
+
+## 5. ViewBinding — Acceso seguro a las vistas
+
+ViewBinding genera automáticamente una clase Kotlin para cada archivo XML. Esto elimina los `findViewById()` que podían causar crashes en runtime.
+
+```kotlin
+// Sin ViewBinding — frágil
+val button = findViewById<Button>(R.id.btnLogin)  // crash si el ID no existe
+
+// Con ViewBinding — seguro en tiempo de compilación
+binding.btnLogin.setOnClickListener { login() }   // error en compilación, no en runtime
+```
+
+El patrón estándar en la app usa una variable nullable que se limpia al destruir la vista:
+
+```kotlin
+private var _binding: FragmentDiscoverBinding? = null
+private val binding get() = _binding!!  // el !! es seguro porque solo se accede entre onCreateView y onDestroyView
 ```
 
 ---
 
-## 6. LiveData y Observers
+## 6. activityViewModels — ViewModels compartidos entre pantallas
 
-Los ViewModels exponen datos como `LiveData`. Los Fragments los observan y se actualizan automáticamente cuando cambian.
+En la app, los ViewModels se obtienen con `activityViewModels()`:
+
+```kotlin
+private val viewModel: RecipeViewModel by activityViewModels()
+```
+
+Esto significa que el mismo `RecipeViewModel` es compartido por **todos los Fragments** que lo pidan. No se crea uno nuevo por Fragment.
+
+**¿Para qué sirve esto?**
+Cuando el usuario toca una receta en `DiscoverFragment`, el Fragment guarda la receta seleccionada en el ViewModel:
+
+```kotlin
+viewModel.setSelectedMeal(meal)
+findNavController().navigate(R.id.action_discoverFragment_to_recipeDetailFragment)
+```
+
+Luego `RecipeDetailFragment` lee esa misma receta del mismo ViewModel:
+
+```kotlin
+viewModel.selectedMeal.observe(viewLifecycleOwner) { meal ->
+    // aquí está la receta que eligió el usuario en DiscoverFragment
+    binding.tvRecipeTitle.text = meal.name
+}
+```
+
+Sin `activityViewModels()`, el `RecipeDetailFragment` tendría un ViewModel diferente y no vería la receta seleccionada.
+
+---
+
+## 7. Flujo completo: abrir una receta
+
+Para entender cómo todo se conecta, esto es lo que pasa cuando el usuario toca una receta:
+
+```
+1. DiscoverFragment — usuario toca una tarjeta de receta
+   ↓
+   discoverAdapter = RecipeAdapter { meal ->
+       viewModel.setSelectedMeal(meal)   // guarda en LiveData
+       findNavController().navigate(...)  // navega
+   }
+
+2. RecipeDetailFragment se crea (onCreateView → onViewCreated)
+   ↓
+   viewModel.selectedMeal.observe(viewLifecycleOwner) { meal ->
+       meal ?: return@observe  // si es null, no hace nada
+
+       // Si la receta no tiene instrucciones (vino de un filtro),
+       // pide el detalle completo a TheMealDB
+       if (meal.instructions == null) {
+           viewModel.getMealById(meal.id)
+           return@observe
+       }
+
+       // Carga la imagen con Glide
+       Glide.with(this).load(meal.thumbnail).into(binding.ivRecipeHeader)
+
+       // Muestra datos básicos
+       binding.tvRecipeTitle.text = meal.name
+       binding.tvInstructions.text = "Traduciendo..."  // placeholder
+
+       // Inicia la traducción en background
+       viewModel.translateMeal(meal)
+   }
+
+3. Mientras tanto, translateMeal() trabaja en background
+   ↓
+   viewModel.translatedContent.observe(viewLifecycleOwner) { content ->
+       // Cuando termina, actualiza el texto
+       binding.tvRecipeTitle.text  = content.name
+       binding.tvInstructions.text = content.instructions
+   }
+```
+
+---
+
+## 8. Coroutines — Cómo la app hace trabajo en background
+
+Todas las llamadas a APIs se hacen en **coroutines**, que son funciones que pueden pausarse y reanudarse sin bloquear el hilo principal.
+
+En Android, el hilo principal (UI thread) es el que dibuja la pantalla. Si se bloquea — aunque sea por 2 segundos esperando una respuesta de red — la app se congela y Android muestra "La app no responde".
 
 ```kotlin
 // En RecipeViewModel:
-private val _favorites = MutableLiveData<List<FavoriteItem>>(emptyList())
-val favorites: LiveData<List<FavoriteItem>> = _favorites
-
-// En ProfileFragment:
-viewModel.favorites.observe(viewLifecycleOwner) { favs ->
-    binding.tvFavoritesCount.text = favs.size.toString()
+fun loadDiscoverRecipes() {
+    viewModelScope.launch {       // inicia una coroutine en el scope del ViewModel
+        _isLoading.value = true   // actualiza LiveData → Fragment muestra spinner
+        try {
+            val letters = listOf("c", "b", "s", "p")
+            val meals = mutableListOf<Meal>()
+            for (letter in letters) {
+                val response = api.getMealsByLetter(letter)  // suspende aquí, espera la respuesta
+                response.meals?.take(3)?.let { meals.addAll(it) }
+            }
+            _randomMeals.value = meals.shuffled().take(10)  // actualiza LiveData
+            _error.value = null
+        } catch (e: UnknownHostException) {
+            _error.value = "Sin conexión a internet"
+        } finally {
+            _isLoading.value = false  // esconde el spinner
+        }
+    }
 }
 ```
 
-Cuando `_favorites` se actualiza (tras guardar o cargar favoritos), el contador en pantalla se actualiza solo.
+`viewModelScope.launch` inicia la coroutine ligada al ciclo de vida del ViewModel. Si el usuario cierra la pantalla mientras carga, la coroutine se cancela automáticamente.
 
 ---
 
-## 7. Adaptadores (RecyclerView)
+## 9. Navegación — NavComponent y MainActivity
 
-Los `RecyclerView` muestran listas de elementos. Cada lista necesita un adaptador que conecta los datos con las vistas.
+Toda la navegación ocurre dentro de `MainActivity`, que contiene un `NavHostFragment`. El `nav_graph.xml` define todos los destinos y las rutas entre ellos.
 
-| Adaptador | Lista que muestra |
-|---|---|
-| `RecipeAdapter` | Grid de recetas (Discover) |
-| `RecipeHorizontalAdapter` | Carrusel horizontal (Hidden Gems) |
-| `FavoriteAdapter` | Grid de favoritos |
-| `MyRecipeAdapter` | Grid de mis recetas en el perfil |
-| `ChefAdapter` | Cocineros seguidos (horizontal) |
-| `CommentAdapter` | Comentarios en detalle de receta |
-| `CommunityAdapter` | Lista de comunidades |
-| `IngredientAdapter` | Ingredientes de una receta |
+`MainActivity` tiene una lógica importante: esconde la barra de navegación inferior cuando el usuario está en pantallas de detalle o autenticación:
+
+```kotlin
+navController.addOnDestinationChangedListener { _, destination, _ ->
+    val hideNav = destination.id in setOf(
+        R.id.recipeDetailFragment,
+        R.id.chefProfileFragment,
+        R.id.loginFragment,
+        R.id.registerFragment,
+        R.id.myRecipeDetailFragment
+    )
+    binding.bottomNavigation.visibility = if (hideNav) View.GONE else View.VISIBLE
+}
+```
+
+Para navegar entre pantallas desde un Fragment:
+
+```kotlin
+// Ir a una pantalla específica
+findNavController().navigate(R.id.action_discoverFragment_to_recipeDetailFragment)
+
+// Volver atrás (equivalente al botón de atrás)
+findNavController().navigateUp()
+```
 
 ---
 
-## 8. SessionManager
+## 10. RecyclerView y Adaptadores
 
-`SessionManager` es un objeto singleton que maneja los datos de sesión del usuario usando `SharedPreferences`.
+`RecyclerView` es el componente que muestra listas eficientes. Recicla las vistas que salen de la pantalla para reutilizarlas con nuevos datos, en lugar de crear miles de vistas.
+
+Cada lista necesita un adaptador. En `DiscoverFragment` hay dos:
+
+```kotlin
+// Carrusel horizontal (Hidden Gems)
+hiddenGemsAdapter = RecipeHorizontalAdapter { meal ->
+    viewModel.setSelectedMeal(meal)
+    findNavController().navigate(R.id.action_discoverFragment_to_recipeDetailFragment)
+}
+binding.rvHiddenGems.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+binding.rvHiddenGems.adapter = hiddenGemsAdapter
+
+// Cuadrícula 2 columnas (Descubrir)
+discoverAdapter = RecipeAdapter { meal ->
+    viewModel.setSelectedMeal(meal)
+    findNavController().navigate(R.id.action_discoverFragment_to_recipeDetailFragment)
+}
+binding.rvDiscoverRecipes.layoutManager = GridLayoutManager(context, 2)
+binding.rvDiscoverRecipes.adapter = discoverAdapter
+```
+
+Cuando llegan datos nuevos, se actualiza con `submitList()`:
+
+```kotlin
+viewModel.randomMeals.observe(viewLifecycleOwner) { meals ->
+    discoverAdapter.submitList(meals)   // RecyclerView calcula qué cambió y actualiza solo eso
+}
+```
+
+**Tabla de adaptadores en la app:**
+
+| Adaptador | Tipo de lista | ¿Dónde se usa? |
+|---|---|---|
+| `RecipeAdapter` | Grid 2 columnas | Discover |
+| `RecipeHorizontalAdapter` | Carrusel horizontal | Home y Discover (Hidden Gems) |
+| `FavoriteAdapter` | Grid de favoritos | Favorites |
+| `MyRecipeAdapter` | Mis recetas publicadas | Profile |
+| `ChefAdapter` | Cocineros seguidos | Profile |
+| `CommentAdapter` | Comentarios | MyRecipeDetail |
+| `CommunityAdapter` | Comunidades temáticas | Communities |
+| `IngredientAdapter` | Ingredientes de una receta | RecipeDetail |
+
+---
+
+## 11. SessionManager — La sesión del usuario
+
+`SessionManager` es un objeto singleton (existe una sola instancia en toda la app) que guarda los datos del usuario en `SharedPreferences` — almacenamiento persistente del dispositivo.
 
 ```kotlin
 object SessionManager {
-    fun saveSession(userId, token, email, refreshToken)  // guarda al hacer login
-    fun getToken(): String?       // JWT para las llamadas a la API
-    fun getUserId(): String?      // UUID del usuario en Supabase
-    fun isLoggedIn(): Boolean     // verifica si hay sesión activa
-    fun isSessionExpired(): Boolean  // timeout de 30 min de inactividad
-    fun saveFollowedChefs(...)    // persiste los chefs seguidos
-    fun saveDisplayName(...)      // persiste el nombre del usuario
-    fun clearSession()            // solo borra datos de auth, no del usuario
+    fun saveSession(userId, token, email, refreshToken)  // login exitoso
+    fun getToken(): String?        // JWT para autorizar peticiones
+    fun getUserId(): String?       // UUID del usuario en Supabase
+    fun isLoggedIn(): Boolean      // ¿hay sesión activa?
+    fun isSessionExpired(): Boolean  // timeout de 30 min
+    fun saveDisplayName(name)      // persiste nombre del usuario
+    fun saveFollowedChefs(...)     // persiste cocineros seguidos
+    fun clearSession()             // logout — borra solo tokens
 }
 ```
 
-**Decisión importante:** `clearSession()` NO borra los datos del usuario (nombre, chefs seguidos) porque están guardados con la clave del `userId`. Si el mismo usuario vuelve a iniciar sesión, recupera su configuración.
-
----
-
-## 9. Glide — Carga de imágenes
-
-Todas las imágenes remotas se cargan con **Glide**, que maneja caché, placeholders y transformaciones:
+**Decisión importante en el código:** `clearSession()` borra los tokens pero NO el nombre ni los cocineros seguidos. Estos están guardados con la clave `display_name_$userId` y `follows_$userId`. Si el mismo usuario vuelve a iniciar sesión, recupera todo su estado:
 
 ```kotlin
-Glide.with(this)
-    .load(meal.thumbnail)   // URL de la imagen
-    .centerCrop()           // recorta al centro
-    .placeholder(android.R.drawable.ic_menu_gallery)  // imagen mientras carga
-    .into(binding.ivRecipeHeader)  // ImageView destino
+fun clearSession() {
+    prefs.edit()
+        .remove("user_id")      // se borra
+        .remove("token")        // se borra
+        .remove("email")        // se borra
+        .remove("last_active")  // se borra
+        // "display_name_$userId" y "follows_$userId" NO se borran
+        .apply()
+}
 ```
 
 ---
 
-## 10. Decisiones de diseño UI
+## 12. Decisiones de diseño UI
 
-- **Colores:** Naranja primario (`#F4831F`) para consistencia de marca
-- **Tema:** Material Design con componentes estándar (`MaterialButton`, `TextInputLayout`)
-- **Header naranja** en todas las pantallas para cohesión visual
-- **Estados vacíos** en todas las listas (emoji + mensaje descriptivo)
-- **Estados de error** con botón de reintentar en Discover
-- **Bottom nav** siempre visible excepto en pantallas de detalle y auth
+- **Naranja primario `#F4831F`** — color consistente en toda la app
+- **Material Design** — `MaterialButton`, `TextInputLayout` con el estilo estándar de Google
+- **Header naranja fijo** en todas las pantallas para identidad visual
+- **Estados vacíos en todas las listas** — si no hay datos, se muestra un mensaje amigable en lugar de una lista en blanco
+- **Bottom nav oculta** en pantallas de detalle y autenticación para no distraer
+- **Animaciones slide** entre pantallas (definidas en `res/anim/`)
+
+---
+
+## Preguntas frecuentes
+
+**¿Por qué una Activity y no varias?**
+El patrón de "Single Activity" es el estándar moderno en Android. Una Activity actúa como contenedor; los Fragments son las pantallas. Esto permite transiciones animadas, compartir ViewModels y un backstack de navegación limpio.
+
+**¿Cuál es la diferencia entre `randomMeals` y `_randomMeals`?**
+`_randomMeals` es `MutableLiveData` — se puede escribir, pero solo desde dentro del ViewModel (es `private`). `randomMeals` es `LiveData` — solo lectura para quien lo observe desde afuera. Esto evita que un Fragment modifique datos que no le corresponden.
+
+**¿Qué es `submitList()` y por qué es mejor que `notifyDataSetChanged()`?**
+`submitList()` usa `DiffUtil` por debajo: compara la lista nueva con la anterior elemento a elemento y solo anima los cambios específicos. `notifyDataSetChanged()` redibuja toda la lista de golpe, lo que es más lento y no tiene animación.
+
+**¿Por qué `viewLifecycleOwner` en los observers?**
+Un Fragment puede existir en memoria sin su vista (al navegar a otra pantalla y volver). Si usamos `this` como owner, el observer sigue activo durante ese tiempo y podría intentar actualizar una vista que no existe → crash. `viewLifecycleOwner` desactiva el observer automáticamente cuando la vista se destruye.
+
+**¿Qué pasa si no hay internet?**
+El ViewModel captura `UnknownHostException` y actualiza `_error.value` con un mensaje. El Fragment observa ese `error` LiveData y muestra el panel de "sin conexión" con el botón "Reintentar".
